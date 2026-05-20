@@ -5,7 +5,9 @@ using UnityEngine.InputSystem;
 public class InputReader : MonoBehaviour, Controls.IPlayerActions
 {
     public event Action RolEvent;
-    
+        
+    public Vector2 MovementValue {get; private set;}    
+        
     private Controls _controls;
     private void Start()
     {
@@ -28,5 +30,10 @@ public class InputReader : MonoBehaviour, Controls.IPlayerActions
             RolEvent?.Invoke(); 
         }
         
+    }
+
+    public void OnMove(InputAction.CallbackContext context)
+    {
+        MovementValue = context.ReadValue<Vector2>();
     }
 }
