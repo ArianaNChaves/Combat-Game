@@ -25,21 +25,9 @@ public class PlayerMoveState : PlayerBaseState
 
         if (stateMachine.InputReader.MovementValue == Vector2.zero) //no se mueve no se gira y aca activo la animacion de idle
         {
-
-
+            
             _idleTimer += Mathf.SmoothStep(0f, 1f, deltaTime);
-            
-            Debug.Log(_idleTimer);
             stateMachine.Animator.SetFloat("IdleTime", _idleTimer); 
-            // if (_idleTimer >= 0.8f)
-            // {
-            //     stateMachine.Animator.SetFloat("IdleTime", _idleTimer); 
-            // }
-            // else
-            // {
-            //     stateMachine.Animator.SetFloat("IdleTime", 0.0f);
-            // }
-            
             stateMachine.Animator.SetFloat("Speed", stateMachine.InputReader.MovementValue.magnitude);
             
             return;
@@ -49,19 +37,6 @@ public class PlayerMoveState : PlayerBaseState
         stateMachine.Animator.SetFloat("Speed", movement.magnitude);
         stateMachine.transform.rotation = Quaternion.LookRotation(movement);
 
-    }
-    
-    private float SmoothIncrease(float currentValue, float deltaTime, float duration)
-    {
-        if (duration <= 0f)
-        {
-            return 1f;
-        }
-
-        currentValue += deltaTime / duration;
-        currentValue = Mathf.Clamp01(currentValue);
-
-        return Mathf.SmoothStep(0f, 1f, currentValue);
     }
 
     public override void Exit()
