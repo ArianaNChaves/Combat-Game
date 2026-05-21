@@ -8,6 +8,8 @@ public class PlayerMoveState : PlayerBaseState
     private const float AnimatorBlendValueMax = 1f;
     private const float MovementMagnitudeMin = 0.01f;
     private float _idleTimer = 0;
+    private Vector3 _currentMovement;
+
     public PlayerMoveState(PlayerStateMachine stateMachine) : base(stateMachine)
     {
         
@@ -20,22 +22,27 @@ public class PlayerMoveState : PlayerBaseState
 
     public override void Tick(float deltaTime)
     {
-        Vector3 movement = CalculateMovement();
+        Vector2 input = stateMachine.InputReader.MovementValue;
+        Vector3 targetMovement = CalculateMovement(input);
+        Vector3 movement = SmoothMovement(targetMovement, deltaTime);
 
         stateMachine.Controller.Move(movement * (stateMachine.MovementSpeed * deltaTime));
-        if (stateMachine.InputReader.MovementValue.sqrMagnitude < MovementMagnitudeMin)
+        if (input.sqrMagnitude < MovementMagnitudeMin)
         {
             
-            _idleTimer += Mathf.SmoothStep(AnimatorBlendValueMin, AnimatorBlendValueMax, deltaTime);
-            stateMachine.Animator.SetFloat(IdleTime, _idleTimer); 
-            stateMachine.Animator.SetFloat(Speed, AnimatorBlendValueMin);
+            _idleTimer += deltaTime;
+            float idleBlendDuration = Mathf.Max(stateMachine.IdleBlendDuration, 0.01f);
+            float idleBlend = Mathf.SmoothStep(AnimatorBlendValueMin, AnimatorBlendValueMax, Mathf.Clamp01(_idleTimer / idleBlendDuration));
+
+            stateMachine.Animator.SetFloat(IdleTime, idleBlend); 
+            stateMachine.Animator.SetFloat(Speed, movement.magnitude);
             
             return;
         }
 
         _idleTimer = 0;
         stateMachine.Animator.SetFloat(IdleTime, _idleTimer);
-        stateMachine.Animator.SetFloat(Speed, stateMachine.InputReader.MovementValue.sqrMagnitude);
+        stateMachine.Animator.SetFloat(Speed, movement.magnitude);
         
         FaceMovementDirection(movement, deltaTime);
 
@@ -43,20 +50,25 @@ public class PlayerMoveState : PlayerBaseState
 
     public override void Exit()
     {
-        
+        _currentMovement = Vector3.zero;
     }
 
     private void FaceMovementDirection(Vector3 movementDirection, float deltaTime)
     {
-        stateMachine.transform.rotation = Quaternion.Lerp(stateMachine.transform.rotation,
-            Quaternion.LookRotation(movementDirection), deltaTime * stateMachine.RotationSpeed);
+        if (movementDirection.sqrMagnitude < MovementMagnitudeMin)
+        {
+            return;
+        }
+
+        stateMachine.transform.rotation = Quaternion.Lerp(stateMachine.transform.rotation, Quaternion.LookRotation(movementDirection), deltaTime * stateMachine.RotationSpeed);
 
     }
 
-    private Vector3 CalculateMovement()
+    private Vector3 CalculateMovement(Vector2 input)
     {
-        Vector3 forward = stateMachine.MainCameraTransform.forward;
-        Vector3 right = stateMachine.MainCameraTransform.right;
+        Transform cameraTransform = stateMachine.MainCameraTransform;
+        Vector3 forward = cameraTransform != null ? cameraTransform.forward : stateMachine.transform.forward;
+        Vector3 right = cameraTransform != null ? cameraTransform.right : stateMachine.transform.right;
         
         forward.y = 0;
         right.y = 0;
@@ -64,7 +76,14 @@ public class PlayerMoveState : PlayerBaseState
         forward.Normalize();
         right.Normalize();
         
-        return forward * stateMachine.InputReader.MovementValue.y + right * stateMachine.InputReader.MovementValue.x;
+        return Vector3.ClampMagnitude(forward * input.y + right * input.x, 1f);
+    }
+
+    private Vector3 SmoothMovement(Vector3 targetMovement, float deltaTime)
+    {
+        _currentMovement = Vector3.MoveTowards(_currentMovement, targetMovement, stateMachine.MovementAcceleration * deltaTime);
+
+        return _currentMovement;
     }
     
 }
