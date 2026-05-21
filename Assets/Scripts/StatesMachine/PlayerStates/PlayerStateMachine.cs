@@ -12,6 +12,8 @@ public class PlayerStateMachine : StateMachine
     [field: SerializeField] public float MovementAcceleration { get; private   set; } 
     [field: SerializeField] public float IdleBlendDuration { get; private   set; } 
     [field: SerializeField] public float RotationSpeed { get; private   set; } 
+    [field: SerializeField] public float Gravity { get; private set; } = -9.81f;
+    [field: SerializeField] public float GroundedGravity { get; private set; } = -2f;
 
     private void Start()
     {

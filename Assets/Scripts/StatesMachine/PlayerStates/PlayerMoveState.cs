@@ -8,6 +8,7 @@ public class PlayerMoveState : PlayerBaseState
     private const float AnimatorBlendValueMax = 1f;
     private const float MovementMagnitudeMin = 0.01f;
     private float _idleTimer = 0;
+    private float _verticalVelocity;
     private Vector3 _currentMovement;
 
     public PlayerMoveState(PlayerStateMachine stateMachine) : base(stateMachine)
@@ -24,9 +25,10 @@ public class PlayerMoveState : PlayerBaseState
     {
         Vector2 input = stateMachine.InputReader.MovementValue;
         Vector3 targetMovement = CalculateMovement(input);
-        Vector3 movement = SmoothMovement(targetMovement, deltaTime);
+        Vector3 horizontalMovement = SmoothMovement(targetMovement, deltaTime);
+        Vector3 movement = ApplyGravity(horizontalMovement * stateMachine.MovementSpeed, deltaTime);
 
-        stateMachine.Controller.Move(movement * (stateMachine.MovementSpeed * deltaTime));
+        stateMachine.Controller.Move(movement * deltaTime);
         if (input.sqrMagnitude < MovementMagnitudeMin)
         {
             
@@ -35,16 +37,16 @@ public class PlayerMoveState : PlayerBaseState
             float idleBlend = Mathf.SmoothStep(AnimatorBlendValueMin, AnimatorBlendValueMax, Mathf.Clamp01(_idleTimer / idleBlendDuration));
 
             stateMachine.Animator.SetFloat(IdleTime, idleBlend); 
-            stateMachine.Animator.SetFloat(Speed, movement.magnitude);
+            stateMachine.Animator.SetFloat(Speed, horizontalMovement.magnitude);
             
             return;
         }
 
         _idleTimer = 0;
         stateMachine.Animator.SetFloat(IdleTime, _idleTimer);
-        stateMachine.Animator.SetFloat(Speed, movement.magnitude);
+        stateMachine.Animator.SetFloat(Speed, horizontalMovement.magnitude);
         
-        FaceMovementDirection(movement, deltaTime);
+        FaceMovementDirection(horizontalMovement, deltaTime);
 
     }
 
@@ -84,6 +86,21 @@ public class PlayerMoveState : PlayerBaseState
         _currentMovement = Vector3.MoveTowards(_currentMovement, targetMovement, stateMachine.MovementAcceleration * deltaTime);
 
         return _currentMovement;
+    }
+
+    private Vector3 ApplyGravity(Vector3 movement, float deltaTime)
+    {
+        if (stateMachine.Controller.isGrounded && _verticalVelocity < 0f)
+        {
+            _verticalVelocity = stateMachine.GroundedGravity;
+        }
+        else
+        {
+            _verticalVelocity += stateMachine.Gravity * deltaTime;
+        }
+
+        movement.y = _verticalVelocity;
+        return movement;
     }
     
 }
